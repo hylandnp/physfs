@@ -221,7 +221,14 @@ if(PHYSFS_ARCHIVE_ZIP)
     add_definitions(-DPHYSFS_SUPPORTS_ZIP=1)
 endif()
 
-option(PHYSFS_ARCHIVE_7Z "Enable 7zip support" TRUE)
+# TODO - fix compile errors on Windows
+if(WIN32 OR MINGW)
+    message("Disabling 7z support due to unresolved compile errors on Windows.")
+    option(PHYSFS_ARCHIVE_7Z "Enable 7zip support" FALSE)
+else()
+    option(PHYSFS_ARCHIVE_7Z "Enable 7zip support" TRUE)
+endif()
+
 if(PHYSFS_ARCHIVE_7Z)
     add_definitions(-DPHYSFS_SUPPORTS_7Z=1)
     # !!! FIXME: rename to 7z.c?
@@ -258,7 +265,14 @@ if(PHYSFS_ARCHIVE_SLB)
     add_definitions(-DPHYSFS_SUPPORTS_SLB=1)
 endif()
 
-option(PHYSFS_ARCHIVE_ISO9660 "Enable ISO9660 support" TRUE)
+# TODO - fix compile errors on Linux
+if(WIN32 OR MINGW)
+    option(PHYSFS_ARCHIVE_ISO9660 "Enable ISO9660 support" TRUE)
+else()
+    message("Disabling ISO9660 support due to unresolved compile errors on Unix systems.")
+    option(PHYSFS_ARCHIVE_ISO9660 "Enable ISO9660 support" FALSE)
+endif()
+
 if(PHYSFS_ARCHIVE_ISO9660)
     add_definitions(-DPHYSFS_SUPPORTS_ISO9660=1)
 endif()

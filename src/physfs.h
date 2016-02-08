@@ -1266,7 +1266,7 @@ PHYSFS_DECL PHYSFS_File *PHYSFS_openAppend(const char *filename);
  *  PHYSFS_permitSymbolicLinks(1) hasn't been called, and opening a
  *  symlink with this function will fail in such a case.
  *
- *   \param filename File to open.
+ *  \param filename File to open.
  *  \return A valid PhysicsFS filehandle on success, NULL on error. Specifics
  *           of the error can be gleaned from PHYSFS_getLastError().
  *
@@ -1277,6 +1277,29 @@ PHYSFS_DECL PHYSFS_File *PHYSFS_openAppend(const char *filename);
  */
 PHYSFS_DECL PHYSFS_File *PHYSFS_openRead(const char *filename);
 
+/**
+ * \n PHYSFS_File *PHYSFS_openRead(const char *filename)
+ * \brief Opens multiple (overlapping) versions of the same file for reading.
+
+ * Opens overlapping files for reading, in platform-independent notation. The search
+ * path is check one at a time (from earliest to latest) until a matching file instance
+ * is found, in which case an abstract filehandle is associated with it and added to
+ * the resultant list of overlapping files. The reading offset is set to the first
+ * byte of the file.
+ *
+ * Note that entries that are symlinks are ignored if PHYSFS_permitSymbolicLinks(1)
+ * hasn't been called, and opening a symlink with this function will fail in such a case.
+ * 
+ * \param filename File to open.
+ * \return A list of valid PhysicsFS filehandles on success, NULL on error. Specifics
+ *         of the error can be gleaned from PHYSFS_getLastError().
+ *         
+ * \sa PHYSFS_openRead
+ * \sa PHYSFS_read
+ * \sa PHYSFS_close
+ * \sa PHYSFS_closeMulti
+ */
+PHYSFS_DECL PHYSFS_File** PHYSFS_openReadMulti(const char* filename);
 
 /**
  * \fn int PHYSFS_close(PHYSFS_File *handle)
@@ -1298,6 +1321,30 @@ PHYSFS_DECL PHYSFS_File *PHYSFS_openRead(const char *filename);
  */
 PHYSFS_DECL int PHYSFS_close(PHYSFS_File *handle);
 
+/**
+ * \fn int PHYSFS_closeMulti(PHYSFS_File **handles)
+ * \brief Close a list of PhysicsFS filehandles.
+ * 
+ * This call is capable of failing if the operating system was buffering
+ * writes to the physical media, and, now forced to write those changes to
+ * physical media, can not store the data for some reason. In such a case,
+ * the filehandle stays open. A well-written program should ALWAYS check the
+ * return value from the close call in addition to every writing call!
+ * 
+ * NOTE: Mainly use this function for closing a list of overlapping file
+ * handles returned by PHYSFS_openMulti(), use the standard PHYSFS_close() for
+ * handles opened using original single-file functions.
+ *
+ * \param handles List of file handles returned from PHYSFS_openMulti().
+ * \return Nonzero on success, zero on error. Specifics of the error can be
+ *         gleaned from PHYSFS_getLastError().
+ *
+ * \sa PHYSFS_openRead
+ * \sa PHYSFS_openWrite
+ * \sa PHYSFS_openAppend
+ * \sa PHYSFS_openReadMulti
+ */
+PHYSFS_DECL int PHYSFS_closeMulti(PHYSFS_File** handles);
 
 /**
  * \fn PHYSFS_sint64 PHYSFS_read(PHYSFS_File *handle, void *buffer, PHYSFS_uint32 objSize, PHYSFS_uint32 objCount)

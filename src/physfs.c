@@ -13,6 +13,7 @@
 
 #define __PHYSICSFS_INTERNAL__
 #include "physfs_internal.h"
+#include "modified_stretchy_buffer.h"
 
 
 typedef struct __PHYSFS_DIRHANDLE__
@@ -2481,6 +2482,84 @@ PHYSFS_File *PHYSFS_openRead(const char *_fname)
     return ((PHYSFS_File *) fh);
 } /* PHYSFS_openRead */
 
+// Failure case for when dynamic C array cannot be alloc'ed:
+#define STRETCHY_BUFFER_OUT_OF_MEMORY { io->destroy(io); GOTO_MACRO(PHYSFS_ERR_OUT_OF_MEMORY, openReadEnd); }
+
+PHYSFS_File **PHYSFS_openReadMulti(const char *_fname)
+{
+    FileHandle** fh_list = NULL;
+
+    char *fname;
+    size_t len;
+
+    BAIL_IF_MACRO(!_fname, PHYSFS_ERR_INVALID_ARGUMENT, 0);
+    len = strlen(_fname) + 1;
+    fname = (char *) __PHYSFS_smallAlloc(len);
+    BAIL_IF_MACRO(!fname, PHYSFS_ERR_OUT_OF_MEMORY, 0);
+
+    if (sanitizePlatformIndependentPath(_fname, fname))
+    {
+        FileHandle *fh = NULL;
+        DirHandle *i = NULL;
+        PHYSFS_Io *io = NULL;
+
+        __PHYSFS_platformGrabMutex(stateLock);
+
+        GOTO_IF_MACRO(!searchPath, PHYSFS_ERR_NOT_FOUND, openReadEnd);
+
+        // Setup temp open file buffer:
+        FileHandle** fh_list_temp = NULL;
+
+        for (i = searchPath; i != NULL; i = i->next)
+        {
+            char *arcfname = fname;
+            if (verifyPath(i, &arcfname, 0))
+            {
+                io = i->funcs->openRead(i->opaque, arcfname);
+
+                if (io)
+                {
+                    fh = (FileHandle *) allocator.Malloc(sizeof (FileHandle));
+
+                    if (fh == NULL)
+                    {
+                        io->destroy(io);
+                        GOTO_MACRO(PHYSFS_ERR_OUT_OF_MEMORY, openReadEnd);
+                    }
+
+                    memset(fh, '\0', sizeof(FileHandle));
+                    fh->io = io;
+                    fh->forReading = 1;
+                    fh->dirHandle = i;
+                    fh->next = openReadList;
+                    openReadList = fh;
+
+                    // Add to open file buffer:
+                    sb_push(fh_list_temp, fh);
+                }
+            } /* if */
+        } /* for */
+
+        // Create final open list (earliest-to-latest):
+        size_t final_size = sb_count(fh_list_temp);
+        size_t fh_index = 0;
+
+        fh_list = (FileHandle**)allocator.Malloc(sizeof(FileHandle*) * final_size);
+
+        for (fh_index = 0; fh_index < final_size; ++fh_index)
+        {
+            fh_list[fh_index] = fh_list_temp[fh_index];
+        }
+
+        openReadEnd:
+        sb_free(fh_list_temp);
+        __PHYSFS_platformReleaseMutex(stateLock);
+    } /* if */
+
+    __PHYSFS_smallFree(fname);
+
+    return ((PHYSFS_File**)fh_list);
+} /* PHYSFS_openRead */
 
 static int closeHandleInOpenList(FileHandle **list, FileHandle *handle)
 {
@@ -2538,6 +2617,41 @@ int PHYSFS_close(PHYSFS_File *_handle)
     return 1;
 } /* PHYSFS_close */
 
+int PHYSFS_closeMulti(PHYSFS_File **_handles)
+{
+    FileHandle** handle = NULL;
+    int rc = 0;
+
+    __PHYSFS_platformGrabMutex(stateLock);
+
+    if (_handles)
+    {
+        for (handle = (FileHandle**)_handles; *handle != NULL; ++handle)
+        {
+            /* -1 == close failure. 0 == not found. 1 == success. */
+            rc = closeHandleInOpenList(&openReadList, *handle);
+            BAIL_IF_MACRO_MUTEX(rc == -1, ERRPASS, stateLock, 0);
+
+            if (!rc)
+            {
+                rc = closeHandleInOpenList(&openWriteList, *handle);
+                BAIL_IF_MACRO_MUTEX(rc == -1, ERRPASS, stateLock, 0);
+            } /* if */
+        }
+
+        allocator.Free(_handles);
+        _handles = NULL;
+    }
+    else
+    {
+        BAIL_IF_MACRO_MUTEX(rc == -1, ERRPASS, stateLock, 0);
+    }
+
+    __PHYSFS_platformReleaseMutex(stateLock);
+    BAIL_IF_MACRO(!rc, PHYSFS_ERR_INVALID_ARGUMENT, 0);
+
+    return 1;
+} /* PHYSFS_close */
 
 static PHYSFS_sint64 doBufferedRead(FileHandle *fh, void *buffer,
                                     PHYSFS_uint64 len)
