@@ -20,7 +20,7 @@ PHYSFS_openReadMulti(const char* filename);
 PHYSFS_closeMulti(PHYSFS_File** handles);
 ```
 
-Using modified third-party "stretchy_buffer.h" dynamic C array library (from the STB public domain libraries: https://github.com/nothings/stb).
+Uses modified third-party "stretchy_buffer.h" dynamic C array library internally (from the STB public domain libraries: https://github.com/nothings/stb).
 
 ## TODOs
 
