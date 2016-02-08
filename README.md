@@ -16,8 +16,8 @@ This fork adds the ability to open overlapping (i.e. different versions of the s
 
 ```c
 // New functions added:
-PHYSFS_openReadMulti(const char* filename);
-PHYSFS_closeMulti(PHYSFS_File** handles);
+PHYSFS_File** PHYSFS_openReadMulti(const char* filename);
+int PHYSFS_closeMulti(PHYSFS_File** handles);
 ```
 
 Uses modified third-party "stretchy_buffer.h" dynamic C array library internally (from the STB public domain libraries: https://github.com/nothings/stb).
@@ -26,3 +26,4 @@ Uses modified third-party "stretchy_buffer.h" dynamic C array library internally
 
 1. Modify CMake files to support some extended build configuration.
 2. Maybe look into fixing build issue for 7z support (on Windows) and ISO9660 (on Linux). Unchecked in CMake for the moment.
+3. Look at release mode build errors in GCC when flag -Werror is set.
