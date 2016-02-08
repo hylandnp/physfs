@@ -16,9 +16,11 @@ This fork adds the ability to open overlapping (i.e. different versions of the s
 
 ```c
 // New functions added:
-PHYSFS_openReadMulti(const char* filename)
-PHYSFS_closeMulti(PHYSFS_File** handles)
+PHYSFS_openReadMulti(const char* filename);
+PHYSFS_closeMulti(PHYSFS_File** handles);
 ```
+
+Using modified third-party "stretchy_buffer.h" dynamic C array library (from the STB public domain libraries: https://github.com/nothings/stb).
 
 ## TODOs
 
